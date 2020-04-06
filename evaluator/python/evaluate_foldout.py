@@ -6,7 +6,8 @@ import numpy as np
 import sys
 import heapq
 from concurrent.futures import ThreadPoolExecutor
-@profile
+
+
 def argmax_top_k(a, top_k=50):
     ele_idx = np.argpartition(-a, top_k)[:top_k]
     idx = np.argsort(a[ele_idx])
@@ -15,7 +16,7 @@ def argmax_top_k(a, top_k=50):
     # return np.array([idx for ele, idx in ele_idx], dtype=np.intc)
     return ele_idx
 
-@profile
+
 def precision(hits, lenth): # (rank, ground_truth):
     # hits = [1 if item in ground_truth else 0 for item in rank]
     # result = np.cumsum(hits, dtype=np.float)/np.arange(1, len(rank)+1)
@@ -23,7 +24,7 @@ def precision(hits, lenth): # (rank, ground_truth):
     result = np.cumsum(hits, dtype=np.float) / np.arange(1, lenth + 1)
     return result
 
-@profile
+
 def recall(hits, lenth): # (rank, ground_truth):
     # hits = [1 if item in ground_truth else 0 for item in rank]
     # result = np.cumsum(hits, dtype=np.float) / len(ground_truth)
@@ -32,7 +33,6 @@ def recall(hits, lenth): # (rank, ground_truth):
     return result
 
 
-@profile
 def map(hits, pre, len_rank, len_gt): # (rank, ground_truth, pre):
     # pre = precision(rank, ground_truth)
     # pre = [pre[idx] if item in ground_truth else 0 for idx, item in enumerate(rank)]
@@ -43,7 +43,7 @@ def map(hits, pre, len_rank, len_gt): # (rank, ground_truth, pre):
     result = sum_pre/len_gt
     return result
 
-@profile
+
 def ndcg(hits, len_rank, len_gt): # (rank, ground_truth):
     # len_rank = len(rank)
     # len_gt = len(ground_truth)
@@ -65,7 +65,6 @@ def ndcg(hits, len_rank, len_gt): # (rank, ground_truth):
     return result
 
 
-@profile
 def mrr(hits, lenth): # (rank, ground_truth):
     # last_idx = sys.maxsize
     # for idx, item in enumerate(rank):
@@ -85,17 +84,11 @@ def mrr(hits, lenth): # (rank, ground_truth):
 
 
 def eval_score_matrix_foldout(score_matrix, test_items, top_k=50, thread_num=None):
-    @profile
     def _eval_one_user(idx):
         scores = score_matrix[idx]  # all scores of the test user
         test_item = test_items[idx]  # all test items of the test user
         ranking = argmax_top_k(scores, top_k)  # Top-K items
         hits = [1 if item in test_item else 0 for item in ranking]
-        # p = precision(ranking, test_item)
-        # r = recall(ranking, test_item)
-        # m = map(ranking, test_item, p)
-        # n = ndcg(ranking, test_item)
-        # mr = mrr(ranking, test_item)
         p = precision(hits, top_k)
         r = recall(hits, len(test_item))
         m = map(hits, p, top_k, len(test_item))
@@ -106,11 +99,8 @@ def eval_score_matrix_foldout(score_matrix, test_items, top_k=50, thread_num=Non
         result = np.array(result, dtype=np.float32).flatten()
         return result
 
-    # with ThreadPoolExecutor(max_workers=thread_num) as executor:
-    #     batch_result = executor.map(_eval_one_user, range(len(test_items)))
-    result = []
-    for i in range(len(test_items)):
-        result.append(_eval_one_user(i))
+    with ThreadPoolExecutor(max_workers=thread_num) as executor:
+        batch_result = executor.map(_eval_one_user, range(len(test_items)))
 
-    # result = list(batch_result)  # generator to list
+    result = list(batch_result)  # generator to list
     return np.array(result)  # list to ndarray
