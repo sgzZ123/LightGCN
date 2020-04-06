@@ -104,5 +104,6 @@ We provide three processed datasets: Gowalla, Yelp2018 and Amazon-book.
 ## Efficiency Improvements:
   * Parallelized sampling on CPU
   * C++ evaluation for top-k recommendation
+  * Improve the efficiency of the performance-estimating functions 
 
 =======
